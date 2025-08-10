@@ -9,13 +9,13 @@
 #include <iostream>
 #include <ostream>
 
-#include "../lib/Encryption.h"
+#include "Injector.h"
 
 
 namespace tl {
     MessageData getMessageData(const ArgHandler &argHandler) {
-        const std::string data = argHandler.getOption("input") +
-                                 argHandler.getOption("file");
+        const std::string data = argHandler.getOption("text") +
+                                 argHandler.getOption("input");
 
         if (data.empty())
             throw std::runtime_error(
@@ -31,15 +31,15 @@ namespace tl {
             "Invalid message data option. Use -t/--text for inline text or -f/--file for a file path.");
     }
 
-    ContainerStuffingMode getStuffingMode(const ArgHandler &argHandler) {
+    InjectionMode getInjectionMode(const ArgHandler &argHandler) {
         const std::string mode = argHandler.getOption("mode");
         if (mode.empty())
             throw std::runtime_error("Stuffing mode is required.");
 
         if (mode == "insert")
-            return ContainerStuffingMode::Insert;
+            return InjectionMode::Insert;
         if (mode == "overwrite")
-            return ContainerStuffingMode::Overwrite;
+            return InjectionMode::Overwrite;
 
         throw std::runtime_error("Invalid stuffing mode: " + mode);
     }
@@ -80,7 +80,7 @@ namespace tl {
             if (!std::filesystem::exists(containerFile))
                 throw std::runtime_error("Container file does not exist: " + containerFile);
 
-            Encryption::decryptFile(containerFile, key, startByte);
+            Injector::extract(containerFile, key, startByte);
             std::cout << "Decryption completed successfully." << std::endl;
             return;
         }
@@ -89,14 +89,14 @@ namespace tl {
             const auto containerFile = argHandler.getOption("encrypt");
             const auto key = argHandler.getOption("key");
             const auto startByte = getStartByte(argHandler);
-            const auto mode = getStuffingMode(argHandler);
+            const auto mode = getInjectionMode(argHandler);
             const auto data = getMessageData(argHandler);
 
             if (containerFile.empty() || key.empty())
                 throw std::runtime_error(
                     "Container file, key, start byte, mode, and message data are required for encryption.");
 
-            Encryption::encryptFile(containerFile, key, startByte, mode, data);
+            Injector::inject(containerFile, key, startByte, data, mode);
             std::cout << "Encryption completed successfully." << std::endl;
             return;
         }

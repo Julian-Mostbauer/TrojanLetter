@@ -20,6 +20,8 @@ namespace tl {
 
         std::string getOption(const std::string &option) const;
 
+        void printCollectedOptions() const;
+
         static void printHelp();
     };
 }

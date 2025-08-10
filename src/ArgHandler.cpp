@@ -56,6 +56,14 @@ namespace tl {
         return "";
     }
 
+    void ArgHandler::printCollectedOptions() const {
+        cout << "Collected Options:\n";
+        for (const auto &[fst, snd]: options) {
+            cout << "  " << fst << ": " << snd << "\n";
+        }
+        cout << "================================================================" << std::endl;
+    }
+
     void ArgHandler::printHelp() {
         cout << "================================================================\n";
         cout << "TrojanLetter - Container File Encryption/Decryption Tool\n";
