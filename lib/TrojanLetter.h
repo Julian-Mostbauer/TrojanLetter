@@ -6,11 +6,11 @@
 #define TROJANLETTER_TROJANLETTER_H
 #include "ArgHandler.h"
 
-
-class TrojanLetter {
-public:
-    static void runWithArgs(const ArgHandler &argHandler);
-};
-
+namespace tl {
+    class TrojanLetter {
+    public:
+        static void runWithArgs(const ArgHandler &argHandler);
+    };
+}
 
 #endif //TROJANLETTER_TROJANLETTER_H

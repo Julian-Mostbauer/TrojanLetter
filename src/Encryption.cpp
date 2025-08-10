@@ -1,297 +1,237 @@
-//
-// Created by julian on 8/10/25.
-//
-
-#include "../lib/Encryption.h"
-
+#ifndef TROJANLETTER_ENCRYPTION_IMPL
+#define TROJANLETTER_ENCRYPTION_IMPL
 #include <algorithm>
-#include <filesystem>
+#include <cstdint>
 #include <fstream>
+#include <ios>
 #include <ranges>
 #include <vector>
 
-constexpr size_t CHUNK_SIZE = 512 * 1024 * 1024; // 512MB
+#include "../lib/Encryption.h"
 
-const std::string Encryption::END_OF_DATA_MARKER = "\0END_OF_DATA\0";
-
-void Encryption::insertFileChunked(const std::string &containerFile, const std::string &messageFile,
-                                   const std::string &packagedFile, const std::string &key, size_t start) {
-    std::ifstream containerStream(containerFile, std::ios::binary);
-    std::ifstream messageStream(messageFile, std::ios::binary);
-    std::ofstream outStream(packagedFile, std::ios::binary | std::ios::trunc);
-
-    if (!containerStream.is_open() || !messageStream.is_open() || !outStream.is_open())
-        throw std::runtime_error("Failed to open one of the files for chunked insert.");
-
-    // Copy container up to start
-    std::vector<char> buffer(CHUNK_SIZE);
-    size_t copied = 0;
-
-    while (copied < start) {
-        size_t toRead = std::min(CHUNK_SIZE, start - copied);
-        containerStream.read(buffer.data(), toRead);
-        outStream.write(buffer.data(), containerStream.gcount());
-        copied += containerStream.gcount();
+namespace tl {
+    std::ifstream Encryption::openInput(const std::string_view path) {
+        std::ifstream in(std::string(path), std::ios::binary);
+        if (!in) throw std::runtime_error("Failed to open input file: " + std::string(path));
+        return in;
     }
 
-    // Write message file (encrypted)
-    while (!messageStream.eof()) {
-        messageStream.read(buffer.data(), CHUNK_SIZE);
-        if (size_t readCount = messageStream.gcount(); readCount > 0) {
-            encryptStr(buffer.data(), readCount, key);
-            outStream.write(buffer.data(), readCount);
+    std::ofstream Encryption::openOutput(const std::string_view path) {
+        std::ofstream out(std::string(path), std::ios::binary | std::ios::trunc);
+        if (!out) throw std::runtime_error("Failed to open output file: " + std::string(path));
+        return out;
+    }
+
+    void Encryption::copyN(std::ifstream &in, std::ofstream &out, std::uint64_t bytesToCopy) {
+        std::vector<char> buffer(std::min<std::uint64_t>(kChunkSize, bytesToCopy));
+        std::uint64_t remaining = bytesToCopy;
+        while (remaining > 0) {
+            const std::size_t toRead = static_cast<std::size_t>(std::min<std::uint64_t>(buffer.size(), remaining));
+            in.read(buffer.data(), static_cast<std::streamsize>(toRead));
+            const std::streamsize r = in.gcount();
+            if (r <= 0) break; // premature EOF
+            out.write(buffer.data(), r);
+            remaining -= static_cast<std::uint64_t>(r);
         }
     }
 
-    // Write rest of container
-    while (!containerStream.eof()) {
-        containerStream.read(buffer.data(), CHUNK_SIZE);
-        outStream.write(buffer.data(), containerStream.gcount());
+    void Encryption::copyRemaining(std::ifstream &in, std::ofstream &out) {
+        std::vector<char> buffer(kChunkSize);
+        while (in.read(buffer.data(), static_cast<std::streamsize>(buffer.size())) || in.gcount() > 0) {
+            out.write(buffer.data(), in.gcount());
+        }
     }
 
-    containerStream.close();
-    messageStream.close();
-    outStream.close();
-}
+    void Encryption::xorTransformInPlace(char *data, const std::size_t size, const std::string &key, const bool reverse) {
+        if (key.empty()) return; // no-op if empty key — caller should normally validate
 
-void Encryption::overwriteFileChunked(const std::string &containerFile, const std::string &messageFile,
-                                      const std::string &packagedFile, const std::string &key, size_t start) {
-    std::ifstream containerStream(containerFile, std::ios::binary);
-    std::ifstream messageStream(messageFile, std::ios::binary);
-    std::ofstream outStream(packagedFile, std::ios::binary | std::ios::trunc);
-
-    if (!containerStream.is_open() || !messageStream.is_open() || !outStream.is_open())
-        throw std::runtime_error("Failed to open one of the files for chunked overwrite.");
-
-    std::vector<char> buffer(CHUNK_SIZE);
-    size_t copied = 0;
-
-    // Copy container up to start
-    while (copied < start) {
-        size_t toRead = std::min(CHUNK_SIZE, start - copied);
-        containerStream.read(buffer.data(), toRead);
-        outStream.write(buffer.data(), containerStream.gcount());
-        copied += containerStream.gcount();
-    }
-
-    // Overwrite with message file (encrypted)
-    while (!messageStream.eof()) {
-        messageStream.read(buffer.data(), CHUNK_SIZE);
-        size_t msgRead = messageStream.gcount();
-        encryptStr(buffer.data(), msgRead, key);
-        if (containerStream.eof()) {
-            outStream.write(buffer.data(), msgRead);
+        if (!reverse) {
+            for (std::size_t i = 0; i < size; ++i)
+                for (const char kc: key)
+                    data[i] ^= kc;
         } else {
-            std::vector<char> containerChunk(msgRead);
-            containerStream.read(containerChunk.data(), msgRead);
-            outStream.write(buffer.data(), msgRead);
-        }
-        copied += msgRead;
-    }
-
-    // Write rest of container if any
-    while (!containerStream.eof()) {
-        containerStream.read(buffer.data(), CHUNK_SIZE);
-        outStream.write(buffer.data(), containerStream.gcount());
-    }
-
-    if (!containerStream.eof() && messageStream.eof()) {
-        std::cerr << "Warning: Message data exceeded original file size and was written beyond bounds." << std::endl;
-    }
-
-    containerStream.close();
-    messageStream.close();
-    outStream.close();
-}
-
-void Encryption::validateEncryptionParams(const std::string &containerFile, const std::string &key,
-                                          const MessageData &messageData) {
-    if (!std::filesystem::exists(containerFile))
-        throw std::runtime_error("Container file does not exist: " + containerFile);
-
-    if (key.empty())
-        throw std::runtime_error("Encryption key cannot be empty.");
-
-    if (messageData.value.empty())
-        throw std::runtime_error("Message data cannot be empty.");
-}
-
-
-void Encryption::encryptFile(const std::string &containerFile, const std::string &key, size_t start,
-                             ContainerStuffingMode mode, const MessageData &messageData) {
-    validateEncryptionParams(containerFile, key, messageData);
-    const std::string packagedFile = containerFile + "_packaged";
-    // Handle message files
-    if (messageData.isFilePath) {
-        switch (mode) {
-            case INSERT: {
-                insertFileChunked(containerFile, messageData.value, packagedFile, key, start);
-                break;
-            }
-            case OVERWRITE: {
-                overwriteFileChunked(containerFile, messageData.value, packagedFile, key, start);
-                break;
-            }
-            default:
-                throw std::runtime_error("Unsupported stuffing mode.");
-        }
-    }
-    // handle plain text data
-    else {
-        std::ifstream containerStream(containerFile, std::ios::binary);
-        if (!containerStream.is_open())
-            throw std::runtime_error("Failed to open container file: " + containerFile);
-
-        std::ofstream outStream(packagedFile, std::ios::binary | std::ios::trunc);
-
-        if (!outStream.is_open())
-            throw std::runtime_error("Failed to create packaged file: " + packagedFile);
-
-        auto &text = const_cast<std::string &>(messageData.value);
-
-        switch (mode) {
-            case INSERT: {
-                // Copy container up to start
-                containerStream.seekg(0, std::ios::end);
-                std::streamsize containerSize = containerStream.tellg();
-                containerStream.seekg(0, std::ios::beg);
-
-                if (start > containerSize)
-                    throw std::runtime_error("Start position is beyond container file size.");
-
-                std::vector<char> buffer(start);
-                containerStream.read(buffer.data(), start);
-                outStream.write(buffer.data(), start);
-
-                // Write message text
-                std::vector<char> encryptedText(text.begin(), text.end());
-                encryptStr(encryptedText.data(), encryptedText.size(), key);
-                outStream.write(encryptedText.data(), encryptedText.size());
-                std::vector<char> encryptedMarker(END_OF_DATA_MARKER.begin(), END_OF_DATA_MARKER.end());
-                encryptStr(encryptedMarker.data(), encryptedMarker.size(), key);
-                outStream.write(encryptedMarker.data(), encryptedMarker.size());
-                // Write rest of container
-                std::vector<char> restBuffer(static_cast<size_t>(containerSize - start));
-                containerStream.read(restBuffer.data(), containerSize - start);
-                outStream.write(restBuffer.data(), containerSize - start);
-
-                containerStream.close();
-                outStream.close();
-                break;
-            }
-            case OVERWRITE: {
-                containerStream.seekg(0, std::ios::end);
-                std::streamsize containerSize = containerStream.tellg();
-                containerStream.seekg(0, std::ios::beg);
-
-                if (start > containerSize)
-                    throw std::runtime_error("Start position is beyond container file size.");
-
-                // Copy container up to start
-                std::vector<char> buffer(start);
-                containerStream.read(buffer.data(), start);
-                outStream.write(buffer.data(), start);
-
-                // Overwrite with message text
-                size_t overwriteEnd = start + text.size();
-                bool extended = false;
-                if (overwriteEnd > containerSize)
-                    extended = true;
-
-                std::vector<char> encryptedText(text.begin(), text.end());
-                encryptStr(encryptedText.data(), encryptedText.size(), key);
-                outStream.write(encryptedText.data(), encryptedText.size());
-                std::vector<char> encryptedMarker(END_OF_DATA_MARKER.begin(), END_OF_DATA_MARKER.end());
-                encryptStr(encryptedMarker.data(), encryptedMarker.size(), key);
-                outStream.write(encryptedMarker.data(), encryptedMarker.size());
-                // Write rest of container if any
-                if (!extended) {
-                    std::vector<char> restBuffer(containerSize - overwriteEnd);
-                    containerStream.read(restBuffer.data(), containerSize - overwriteEnd);
-                    outStream.write(restBuffer.data(), containerSize - overwriteEnd);
-                } else
-                    std::cerr << "Warning: Message data exceeded original file size and was written beyond bounds." <<
-                            std::endl;
-
-
-                containerStream.close();
-                outStream.close();
-                break;
-            }
-            default:
-                throw std::runtime_error("Unsupported stuffing mode.");
-        }
-    }
-}
-
-void Encryption::validateDecryptionParams(const std::string &containerFile, const std::string &key) {
-    if (!std::filesystem::exists(containerFile))
-        throw std::runtime_error("Container file does not exist: " + containerFile);
-
-    if (key.empty())
-        throw std::runtime_error("Decryption key cannot be empty.");
-}
-
-void Encryption::decryptFile(const std::string &containerFile, const std::string &key, size_t start) {
-    validateDecryptionParams(containerFile, key);
-
-    const std::string unpackedFile = containerFile + "_unpacked.txt";
-    std::ifstream containerStream(containerFile, std::ios::binary);
-    std::ofstream outStream(unpackedFile, std::ios::binary | std::ios::trunc);
-
-    if (!containerStream.is_open() || !outStream.is_open())
-        throw std::runtime_error("Failed to open container or output file for decryption.");
-
-    containerStream.seekg(0, std::ios::end);
-    std::streamsize containerSize = containerStream.tellg();
-
-    if (start >= containerSize)
-        throw std::runtime_error("Start position is beyond container file size.");
-
-    containerStream.seekg(start, std::ios::beg);
-    std::vector<char> buffer(CHUNK_SIZE);
-    std::vector<char> markerBuffer(END_OF_DATA_MARKER.begin(), END_OF_DATA_MARKER.end());
-    size_t markerLen = markerBuffer.size();
-    std::vector<char> window;
-    window.reserve(markerLen);
-
-    bool found = false;
-    while (!containerStream.eof() && !found) {
-        containerStream.read(buffer.data(), CHUNK_SIZE);
-        size_t readCount = containerStream.gcount();
-        if (readCount == 0) break;
-        decryptStr(buffer.data(), readCount, key);
-        for (size_t i = 0; i < readCount; ++i) {
-            window.push_back(buffer[i]);
-            if (window.size() > markerLen)
-                outStream.put(window.front()), window.erase(window.begin());
-            if (window.size() == markerLen && std::equal(window.begin(), window.end(), markerBuffer.begin())) {
-                found = true;
-                break;
-            }
+            for (std::size_t i = 0; i < size; ++i)
+                for (const char it : std::ranges::reverse_view(key))
+                    data[i] ^= it;
         }
     }
 
-    // Write any remaining data before marker
-    if (!found)
-        for (char c: window) outStream.put(c);
+    std::vector<char> Encryption::encryptedMarker(const std::string &key) {
+        std::vector<char> m(kEndOfDataMarker.begin(), kEndOfDataMarker.end());
+        xorTransformInPlace(m.data(), m.size(), key, false);
+        return m;
+    }
 
+    void Encryption::encryptFile(const std::string_view containerFile, const std::string_view key, const std::uint64_t offset,
+                                 const ContainerStuffingMode mode, const MessageData &message) {
+        // basic validation
+        if (!std::filesystem::exists(std::string(containerFile)))
+            throw std::runtime_error("Container does not exist: " + std::string(containerFile));
+        if (std::string(key).empty()) throw std::runtime_error("Encryption key cannot be empty");
+        if (message.value.empty()) throw std::runtime_error("Message cannot be empty");
 
-    containerStream.close();
-    outStream.close();
-}
+        const std::string packaged = std::string(containerFile) + "_packaged";
 
-void Encryption::encryptStr(char *data, const size_t size, const std::string &key) {
-    for (int i = 0; i < size; ++i)
-        for (const auto kc: key)
-            data[i] ^= kc;
+        if (mode == ContainerStuffingMode::Insert)
+            encryptInsert(containerFile, packaged, std::string(key), offset, message);
+        else
+            encryptOverwrite(containerFile, packaged, std::string(key), offset, message);
+    }
 
-    // This is just a placeholder.
-    // Will be replaced with a better one soon. (AES or ChaCha20)
-}
+    void Encryption::encryptInsert(std::string_view containerFile, std::string_view packagedFile,
+                                   const std::string &key,
+                                   std::uint64_t offset, const MessageData &message) {
+        auto in = openInput(containerFile);
+        auto out = openOutput(packagedFile);
 
-void Encryption::decryptStr(char *data, const size_t size, const std::string &key) {
-    for (int i = 0; i < size; ++i)
-        for (const char it: std::ranges::reverse_view(key))
-            data[i] ^= it;
-}
+        // Get container size and validate
+        in.seekg(0, std::ios::end);
+        if (std::uint64_t containerSize = in.tellg(); offset > containerSize) throw std::runtime_error("Start offset beyond container size");
+        in.seekg(0, std::ios::beg);
+
+        // Copy up to offset
+        copyN(in, out, offset);
+
+        // Write message (file or text) encrypted
+        if (message.isFilePath) {
+            auto msgIn = openInput(message.value);
+            std::vector<char> buffer(kChunkSize);
+            while (msgIn.read(buffer.data(), static_cast<std::streamsize>(buffer.size())) || msgIn.gcount() > 0) {
+                auto r = static_cast<std::size_t>(msgIn.gcount());
+                xorTransformInPlace(buffer.data(), r, key, false);
+                out.write(buffer.data(), static_cast<std::streamsize>(r));
+            }
+        } else {
+            std::vector<char> text(message.value.begin(), message.value.end());
+            xorTransformInPlace(text.data(), text.size(), key, false);
+            out.write(text.data(), static_cast<std::streamsize>(text.size()));
+        }
+
+        // encrypted marker
+        auto marker = encryptedMarker(key);
+        out.write(marker.data(), static_cast<std::streamsize>(marker.size()));
+
+        // write rest of container
+        copyRemaining(in, out);
+    }
+
+    void Encryption::encryptOverwrite(std::string_view containerFile, std::string_view packagedFile,
+                                      const std::string &key,
+                                      std::uint64_t offset, const MessageData &message) {
+        auto in = openInput(containerFile);
+        auto out = openOutput(packagedFile);
+
+        // Get container size and validate
+        in.seekg(0, std::ios::end);
+        std::uint64_t containerSize = static_cast<std::uint64_t>(in.tellg());
+        if (offset > containerSize) throw std::runtime_error("Start offset beyond container size");
+        in.seekg(0, std::ios::beg);
+
+        // Copy up to offset
+        copyN(in, out, offset);
+
+        // Overwrite: read from message and either overwrite existing bytes or append if message is larger
+        std::uint64_t written = 0;
+
+        auto writeEncryptedChunk = [&](const char *buf, std::size_t len) {
+            std::vector<char> tmp(buf, buf + len);
+            xorTransformInPlace(tmp.data(), tmp.size(), key, false);
+            out.write(tmp.data(), static_cast<std::streamsize>(tmp.size()));
+            // advance container read pointer if possible (to consume overwritten bytes)
+            if (in) {
+                in.read(tmp.data(), static_cast<std::streamsize>(len));
+                // ignore what was read — overwritten
+            }
+            written += len;
+        };
+
+        if (message.isFilePath) {
+            auto msgIn = openInput(message.value);
+            std::vector<char> buffer(kChunkSize);
+            while (msgIn.read(buffer.data(), static_cast<std::streamsize>(buffer.size())) || msgIn.gcount() > 0) {
+                auto r = static_cast<std::size_t>(msgIn.gcount());
+                writeEncryptedChunk(buffer.data(), r);
+            }
+        } else {
+            const std::string &txt = message.value;
+            const char *p = txt.data();
+            std::size_t remaining = txt.size();
+            while (remaining > 0) {
+                std::size_t part = std::min<std::size_t>(remaining, kChunkSize);
+                writeEncryptedChunk(p, part);
+                p += part;
+                remaining -= part;
+            }
+        }
+
+        // append encrypted marker
+        auto marker = encryptedMarker(key);
+        out.write(marker.data(), static_cast<std::streamsize>(marker.size()));
+
+        // if message extended beyond original container, warn
+        std::uint64_t endPos = offset + written;
+        if (endPos > containerSize) {
+            std::cerr << "Warning: message exceeded original container size and extended file.\n";
+            // nothing to copy from container because we consumed EOF — but still try to copy any remaining container data (none expected)
+            copyRemaining(in, out);
+        } else {
+            // Copy rest of container starting at (offset + written)
+            std::uint64_t toCopy = containerSize - endPos;
+            copyN(in, out, toCopy);
+        }
+    }
+
+    void Encryption::decryptFile(std::string_view containerFile, std::string_view key, std::uint64_t offset,
+                                 std::string_view outFile) {
+        if (!std::filesystem::exists(std::string(containerFile)))
+            throw std::runtime_error("Container does not exist: " + std::string(containerFile));
+        if (std::string(key).empty()) throw std::runtime_error("Decryption key cannot be empty");
+
+        const std::string outPath = (outFile.empty()
+                                         ? (std::string(containerFile) + "_unpacked.txt")
+                                         : std::string(outFile));
+
+        auto in = openInput(containerFile);
+        auto out = openOutput(outPath);
+
+        in.seekg(0, std::ios::end);
+        std::uint64_t containerSize = static_cast<std::uint64_t>(in.tellg());
+        if (offset >= containerSize) throw std::runtime_error("Offset beyond container size");
+        in.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
+
+        std::vector<char> buffer(kChunkSize);
+        std::vector<char> marker(kEndOfDataMarker.begin(), kEndOfDataMarker.end());
+        std::vector<char> encMarker = encryptedMarker(std::string(key));
+
+        // Accumulate all decrypted bytes after offset
+        std::vector<char> decrypted;
+        bool found = false;
+
+        while (in.read(buffer.data(), static_cast<std::streamsize>(buffer.size())) || in.gcount() > 0) {
+            auto r = static_cast<std::size_t>(in.gcount());
+            xorTransformInPlace(buffer.data(), r, std::string(key), true);
+
+            decrypted.insert(decrypted.end(), buffer.begin(), buffer.begin() + r);
+
+            // Search for marker in decrypted data
+            if (decrypted.size() >= marker.size()) {
+                auto it = std::search(decrypted.begin(), decrypted.end(), marker.begin(), marker.end());
+                if (it != decrypted.end()) {
+                    found = true;
+                    // Write all bytes before marker
+                    out.write(decrypted.data(), std::distance(decrypted.begin(), it));
+                    break;
+                }
+            }
+        }
+
+        if (!found) {
+            // Marker not found, write all decrypted data
+            out.write(decrypted.data(), decrypted.size());
+        }
+
+        // done
+    }
+} // namespace tl
+
+#endif // TROJANLETTER_ENCRYPTION_IMPL

@@ -7,18 +7,21 @@
 #include <string>
 #include <unordered_map>
 
-class ArgHandler {
-    std::unordered_map<std::string, std::string> options;
-    ArgHandler() = default;
-public:
-    static ArgHandler fromArgs(int argc, char *argv[]);
+namespace tl {
+    class ArgHandler {
+        std::unordered_map<std::string, std::string> options;
 
-    bool hasOption(const std::string &option) const;
+        ArgHandler() = default;
 
-    std::string getOption(const std::string &option) const;
+    public:
+        static ArgHandler fromArgs(int argc, char *argv[]);
 
-    static void printHelp();
-};
+        bool hasOption(const std::string &option) const;
 
+        std::string getOption(const std::string &option) const;
+
+        static void printHelp();
+    };
+}
 
 #endif //TROJANLETTER_ARGHANDLER_H

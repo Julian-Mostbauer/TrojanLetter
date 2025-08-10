@@ -11,97 +11,97 @@
 
 #include "../lib/Encryption.h"
 
-using namespace std;
 
-MessageData getMessageData(const ArgHandler &argHandler) {
-    const string data = argHandler.getOption("-t") + argHandler.getOption("--text") +
-                        argHandler.getOption("-f") + argHandler.getOption("--file");
+namespace tl {
+    MessageData getMessageData(const ArgHandler &argHandler) {
+        const std::string data = argHandler.getOption("input") +
+                                 argHandler.getOption("file");
 
-    if (data.empty())
-        throw runtime_error(
-            "Message data is required. Either use -t/--text for inline text or -f/--file for a file path.");
+        if (data.empty())
+            throw std::runtime_error(
+                "Message data is required! See help for options.");
 
-    if (argHandler.hasOption("-t") || argHandler.hasOption("--text"))
-        return MessageData::fromText(data);
+        if (argHandler.hasOption("text"))
+            return MessageData::fromText(data);
 
-    if (argHandler.hasOption("-f") || argHandler.hasOption("--file"))
-        return MessageData::fromFile(data);
+        if (argHandler.hasOption("input"))
+            return MessageData::fromFile(data);
 
-    throw runtime_error("Invalid message data option. Use -t/--text for inline text or -f/--file for a file path.");
-}
-
-ContainerStuffingMode getStuffingMode(const ArgHandler &argHandler) {
-    const string mode = argHandler.getOption("-m") + argHandler.getOption("--mode");
-    if (mode.empty())
-        throw runtime_error("Stuffing mode is required.");
-
-    if (mode == "insert")
-        return ContainerStuffingMode::INSERT;
-    if (mode == "overwrite")
-        return ContainerStuffingMode::OVERWRITE;
-
-    throw runtime_error("Invalid stuffing mode: " + mode);
-}
-
-size_t getStartByte(const ArgHandler &argHandler) {
-    const string startByte = argHandler.getOption("-s") + argHandler.getOption("--start");
-    if (startByte.empty())
-        throw runtime_error("Start byte is required.");
-
-    try {
-        return stoull(startByte);
-    } catch (const std::invalid_argument &) {
-        throw runtime_error("Invalid start byte: " + startByte);
-    } catch (const std::out_of_range &) {
-        throw runtime_error("Start byte out of range: " + startByte);
-    }
-}
-
-void TrojanLetter::runWithArgs(const ArgHandler &argHandler) {
-    if (argHandler.hasOption("-h") || argHandler.hasOption("--help")) {
-        ArgHandler::printHelp();
-        return;
+        throw std::runtime_error(
+            "Invalid message data option. Use -t/--text for inline text or -f/--file for a file path.");
     }
 
-    if (argHandler.hasOption("-v") || argHandler.hasOption("--version")) {
-        cout << "Version 1.0.0" << endl;
-        return;
+    ContainerStuffingMode getStuffingMode(const ArgHandler &argHandler) {
+        const std::string mode = argHandler.getOption("mode");
+        if (mode.empty())
+            throw std::runtime_error("Stuffing mode is required.");
+
+        if (mode == "insert")
+            return ContainerStuffingMode::Insert;
+        if (mode == "overwrite")
+            return ContainerStuffingMode::Overwrite;
+
+        throw std::runtime_error("Invalid stuffing mode: " + mode);
     }
 
-    if (argHandler.hasOption("-d") || argHandler.hasOption("--decrypt")) {
-        if (!argHandler.hasOption("-k") || !argHandler.hasOption("-s")) {
-            throw runtime_error("Missing required options for decryption.");
+    size_t getStartByte(const ArgHandler &argHandler) {
+        const std::string startByte = argHandler.getOption("start");
+        if (startByte.empty())
+            throw std::runtime_error("Start byte is required.");
+
+        try {
+            return stoull(startByte);
+        } catch (const std::invalid_argument &) {
+            throw std::runtime_error("Invalid start byte: " + startByte);
+        } catch (const std::out_of_range &) {
+            throw std::runtime_error("Start byte out of range: " + startByte);
+        }
+    }
+
+    void TrojanLetter::runWithArgs(const ArgHandler &argHandler) {
+        if (argHandler.hasOption("help")) {
+            ArgHandler::printHelp();
+            return;
         }
 
-        const auto containerFile = argHandler.getOption("-d") + argHandler.getOption("--decrypt");
-        const auto key = argHandler.getOption("-k") + argHandler.getOption("--key");
-        const auto startByte = getStartByte(argHandler);
+        if (argHandler.hasOption("version")) {
+            std::cout << "Version 1.0.0" << std::endl;
+            return;
+        }
 
-        if (containerFile.empty() || key.empty())
-            throw runtime_error("Container file, key, and start byte are required for decryption.");
+        if (argHandler.hasOption("decrypt")) {
+            const auto containerFile = argHandler.getOption("decrypt");
+            const auto key = argHandler.getOption("key");
+            const auto startByte = getStartByte(argHandler);
 
-        if (!std::filesystem::exists(containerFile))
-            throw runtime_error("Container file does not exist: " + containerFile);
+            if (containerFile.empty() || key.empty())
+                throw std::runtime_error("Container file, key, and start byte are required for decryption.");
 
-        Encryption::decryptFile(containerFile, key, startByte);
+            if (!std::filesystem::exists(containerFile))
+                throw std::runtime_error("Container file does not exist: " + containerFile);
+
+            Encryption::decryptFile(containerFile, key, startByte);
+            std::cout << "Decryption completed successfully." << std::endl;
+            return;
+        }
+
+        if (argHandler.hasOption("encrypt")) {
+            const auto containerFile = argHandler.getOption("encrypt");
+            const auto key = argHandler.getOption("key");
+            const auto startByte = getStartByte(argHandler);
+            const auto mode = getStuffingMode(argHandler);
+            const auto data = getMessageData(argHandler);
+
+            if (containerFile.empty() || key.empty())
+                throw std::runtime_error(
+                    "Container file, key, start byte, mode, and message data are required for encryption.");
+
+            Encryption::encryptFile(containerFile, key, startByte, mode, data);
+            std::cout << "Encryption completed successfully." << std::endl;
+            return;
+        }
+
+        std::cerr << "Unrecognized command line options." << std::endl;
+        ArgHandler::printHelp();
     }
-
-    if (argHandler.hasOption("-e")) {
-        if (!argHandler.hasOption("-k") || !argHandler.hasOption("-s") || !argHandler.hasOption("-m"))
-            throw runtime_error("Missing required options for encryption.");
-
-        const auto containerFile = argHandler.getOption("-e") + argHandler.getOption("--encrypt");
-        const auto key = argHandler.getOption("-k") + argHandler.getOption("--key");
-        const auto startByte = getStartByte(argHandler);
-        const auto mode = getStuffingMode(argHandler);
-        const auto data = getMessageData(argHandler);
-
-        if (containerFile.empty() || key.empty())
-            throw runtime_error("Container file, key, start byte, mode, and message data are required for encryption.");
-
-        Encryption::encryptFile(containerFile, key, startByte, mode, data);
-    }
-
-    cerr << "Unrecognized command line options." << endl;
-    ArgHandler::printHelp();
 }

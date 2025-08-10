@@ -4,54 +4,60 @@
 
 #ifndef TROJANLETTER_ENCRYPTION_H
 #define TROJANLETTER_ENCRYPTION_H
-#include <cstdint>
+
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
-#include <utility>
+#include <string>
+#include <string_view>
+#include <vector>
 
+namespace tl {
+    constexpr std::size_t kChunkSize = 512 * 1024 * 1024; // 512MB (tunable)
+    inline const std::string kEndOfDataMarker = "\0END_OF_DATA\0";
 
-enum ContainerStuffingMode {
-    INSERT,
-    OVERWRITE,
-};
+    enum class ContainerStuffingMode { Insert, Overwrite };
 
-struct MessageData {
-    bool isFilePath;
-    std::string value;
+    struct MessageData {
+        bool isFilePath;
+        std::string value;
 
-    static MessageData fromFile(const std::string &filePath) {
-        return MessageData(true, filePath);
-    }
-
-    static MessageData fromText(const std::string &text) {
-        return MessageData(false, text);
-    }
-
-private:
-    explicit MessageData(const bool isFilePath, std::string value) : isFilePath(isFilePath), value(std::move(value)) {
+        static MessageData fromFile(std::string path) { return {true, std::move(path)}; }
+        static MessageData fromText(std::string text) { return {false, std::move(text)}; }
     };
-};
 
-class Encryption {
-public:
-    static void decryptFile(const std::string &containerFile, const std::string &key, size_t start);
+    class Encryption {
+    public:
+        // High-level APIs
+        static void encryptFile(std::string_view containerFile, std::string_view key, std::uint64_t offset,
+                                ContainerStuffingMode mode, const MessageData &message);
 
-    static void encryptFile(const std::string &containerFile, const std::string &key, size_t start,
-                        ContainerStuffingMode mode, const MessageData &messageData) ;
+        static void decryptFile(std::string_view containerFile, std::string_view key, std::uint64_t offset,
+                                std::string_view outFile = "");
 
-private:
-    const static std::string END_OF_DATA_MARKER;
-    static void insertFileChunked(const std::string &containerFile, const std::string &messageFile,
-                                  const std::string &packagedFile, const std::string &key, size_t start);
+    private:
+        // helpers
+        static std::ifstream openInput(std::string_view path);
 
-    static void overwriteFileChunked(const std::string &containerFile, const std::string &messageFile,
-                                     const std::string &packagedFile, const std::string &key, size_t start);
+        static std::ofstream openOutput(std::string_view path);
 
-    inline static void validateEncryptionParams(const std::string &containerFile, const std::string &key, const MessageData &messageData);
-    inline static void validateDecryptionParams(const std::string &containerFile, const std::string &key);
+        static void copyN(std::ifstream &in, std::ofstream &out, std::uint64_t bytesToCopy);
 
-    static void encryptStr(char *data, size_t size, const std::string &key);
-    static void decryptStr(char *data, size_t size, const std::string &key);
-};
+        static void copyRemaining(std::ifstream &in, std::ofstream &out);
 
+        static void xorTransformInPlace(char *data, std::size_t size, const std::string &key, bool reverse = false);
 
-#endif //TROJANLETTER_ENCRYPTION_H
+        static std::vector<char> encryptedMarker(const std::string &key);
+
+        // mode implementations
+        static void encryptInsert(std::string_view containerFile, std::string_view packagedFile, const std::string &key,
+                                  std::uint64_t offset, const MessageData &message);
+
+        static void encryptOverwrite(std::string_view containerFile, std::string_view packagedFile,
+                                     const std::string &key,
+                                     std::uint64_t offset, const MessageData &message);
+    };
+} // namespace tl
+
+#endif // TROJANLETTER_ENCRYPTION_H
