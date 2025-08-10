@@ -8,13 +8,12 @@
 namespace fs = std::filesystem;
 
 namespace tl {
-
     void Injector::inject(const std::string &containerPath,
-                           const std::string &key,
-                           size_t startByte,
-                           const MessageData& messageData,
-                           InjectionMode injectionMode) {
-        (void)key; // Key not used yet
+                          const std::string &key,
+                          size_t startByte,
+                          const MessageData &messageData,
+                          InjectionMode injectionMode) {
+        (void) key; // Key not used yet
 
         if (!fs::exists(containerPath)) {
             throw std::runtime_error("Container file does not exist: " + containerPath);
@@ -57,7 +56,8 @@ namespace tl {
                 buffer.resize(startByte + data.size());
             }
             std::copy(data.begin(), data.end(), buffer.begin() + startByte);
-        } else { // Insert mode
+        } else {
+            // Insert mode
             buffer.insert(buffer.begin() + startByte, data.begin(), data.end());
         }
 
@@ -67,9 +67,9 @@ namespace tl {
     }
 
     void Injector::extract(const std::string &containerFile,
-                            const std::string &key,
-                            size_t startByte) {
-        (void)key; // Key not used yet
+                           const std::string &key,
+                           size_t startByte) {
+        (void) key; // Key not used yet
 
         if (!fs::exists(containerFile)) {
             throw std::runtime_error("Container file does not exist: " + containerFile);
@@ -111,5 +111,4 @@ namespace tl {
         std::ofstream outFile(outputPath, std::ios::binary);
         outFile.write(extracted.data(), extracted.size());
     }
-
 }
