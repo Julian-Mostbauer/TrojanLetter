@@ -6,6 +6,7 @@
 #define TROJANLETTER_ENCRYPTOR_H
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace tl::Encryption {
     enum class EncryptorType {
@@ -14,25 +15,24 @@ namespace tl::Encryption {
 
     class Encryptor {
     protected:
-        Encryptor() = default;
+        std::string key;
+
+        explicit Encryptor(std::string key) : key(std::move(key)) {
+        };
 
     public:
         virtual ~Encryptor() = default;
 
-        virtual std::string encrypt(const std::string &data,
-                                    const std::string &key) = 0;
+        [[nodiscard]] virtual std::string encrypt(const std::string &data) const = 0;
 
-        virtual std::string decrypt(const std::string &data,
-                                    const std::string &key) = 0;
+        [[nodiscard]] virtual std::string decrypt(const std::string &data) const = 0;
 
 
-        virtual void encrypt(char *data, size_t size,
-                             const std::string &key) = 0;
+        virtual void encrypt(char *data, size_t size) const = 0;
 
-        virtual void decrypt(char *data, size_t size,
-                             const std::string &key) = 0;
+        virtual void decrypt(char *data, size_t size) const = 0;
 
-        static std::unique_ptr<Encryptor> createEncryptor(const EncryptorType &type);
+        static std::unique_ptr<Encryptor> createEncryptor(const std::string &key, const EncryptorType &type);
     };
 }
 

@@ -7,6 +7,8 @@
 #include <string>
 #include <utility>
 
+#include "Encryption/Encryptor.h"
+
 namespace tl {
     enum class InjectionMode {
         Overwrite,
@@ -32,13 +34,15 @@ namespace tl {
 
     class Injector {
         static inline const std::string kEndOfMessageMarker = "TROJANLETTER_END_OF_MESSAGE";
+
     public:
-        static void extract(const std::string &containerFile, const std::string &key, size_t startByte);
+        static void extract(const std::string &containerFile, const std::unique_ptr<Encryption::Encryptor> &encryptor,
+                            size_t startByte);
 
         static void inject(const std::string &containerPath,
-                           const std::string &key,
+                           const MessageData &messageData,
+                           const std::unique_ptr<Encryption::Encryptor> &encryptor,
                            size_t startByte,
-                           const MessageData& messageData,
                            InjectionMode injectionMode);
     };
 }

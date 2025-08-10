@@ -9,13 +9,17 @@
 namespace tl::Encryption {
     class XorEncryptor final : public Encryptor {
     public:
-        std::string encrypt(const std::string &data, const std::string &key) override;
+        explicit XorEncryptor(const std::string &key)
+            : Encryptor(key) {
+        }
 
-        std::string decrypt(const std::string &data, const std::string &key) override;
+        [[nodiscard]] std::string encrypt(const std::string &data) const override;
 
-        void encrypt(char *data, size_t size, const std::string &key) override;
+        [[nodiscard]] std::string decrypt(const std::string &data) const override;
 
-        void decrypt(char *data, size_t size, const std::string &key) override;
+        void encrypt(char *data, size_t size) const override;
+
+        void decrypt(char *data, size_t size) const override;
     };
 }
 #endif //TROJANLETTER_XORENCRYPTOR_H

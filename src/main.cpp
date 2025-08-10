@@ -9,18 +9,16 @@ int tryRun(const tl::ArgHandler &argHandler) {
         return 0;
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
-        argHandler.printCollectedOptions();
         std::cout << "Check -h for help!" << std::endl;
         return -1;
     } catch (...) {
         std::cerr << "An unknown error occurred." << std::endl;
-        argHandler.printCollectedOptions();
         std::cout << "Check -h for help!" << std::endl;
         return -1;
     }
 }
 
-int main(const int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     try {
         const auto argHandler = tl::ArgHandler::fromArgs(argc, argv);
         return tryRun(argHandler);

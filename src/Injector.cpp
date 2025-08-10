@@ -9,39 +9,38 @@ namespace fs = std::filesystem;
 
 namespace tl {
     void Injector::inject(const std::string &containerPath,
-                          const std::string &key,
-                          size_t startByte,
                           const MessageData &messageData,
+                          const std::unique_ptr<Encryption::Encryptor> &encryptor,
+                          size_t startByte,
                           InjectionMode injectionMode) {
-        (void) key; // Key not used yet
-
         if (!fs::exists(containerPath)) {
             throw std::runtime_error("Container file does not exist: " + containerPath);
         }
 
-        // Prepare output path: "container-file"_loaded."original_extension"
         fs::path inputPath(containerPath);
         std::string stem = inputPath.stem().string();
         std::string ext = inputPath.extension().string();
         fs::path outputPath = inputPath.parent_path() / (stem + "_loaded" + ext);
 
-        // Copy original container to output
         fs::copy_file(inputPath, outputPath, fs::copy_options::overwrite_existing);
 
-        // Load the data to inject
-        std::string data;
+        // Load message data
+        std::string plainData;
         if (messageData.isPath) {
             std::ifstream in(messageData.data, std::ios::binary);
             if (!in) throw std::runtime_error("Failed to open message file: " + messageData.data);
-            data.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            plainData.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         } else {
-            data = messageData.data;
+            plainData = messageData.data;
         }
 
-        // Append end marker
-        data += kEndOfMessageMarker;
+        // Append marker
+        plainData += kEndOfMessageMarker;
 
-        // Read output file into memory
+        // Encrypt full payload
+        std::string encryptedData = encryptor->encrypt(plainData);
+
+        // Read output file
         std::ifstream inFile(outputPath, std::ios::binary);
         std::vector<char> buffer((std::istreambuf_iterator<char>(inFile)), {});
         inFile.close();
@@ -51,64 +50,50 @@ namespace tl {
         }
 
         if (injectionMode == InjectionMode::Overwrite) {
-            // Overwrite in place (truncate if data goes beyond file size)
-            if (startByte + data.size() > buffer.size()) {
-                buffer.resize(startByte + data.size());
+            if (startByte + encryptedData.size() > buffer.size()) {
+                buffer.resize(startByte + encryptedData.size());
             }
-            std::copy(data.begin(), data.end(), buffer.begin() + startByte);
+            std::copy(encryptedData.begin(), encryptedData.end(), buffer.begin() + startByte);
         } else {
-            // Insert mode
-            buffer.insert(buffer.begin() + startByte, data.begin(), data.end());
+            buffer.insert(buffer.begin() + startByte, encryptedData.begin(), encryptedData.end());
         }
 
-        // Write back to output file
         std::ofstream outFile(outputPath, std::ios::binary | std::ios::trunc);
         outFile.write(buffer.data(), buffer.size());
     }
 
     void Injector::extract(const std::string &containerFile,
-                           const std::string &key,
+                           const std::unique_ptr<Encryption::Encryptor> &encryptor,
                            size_t startByte) {
-        (void) key; // Key not used yet
-
         if (!fs::exists(containerFile)) {
             throw std::runtime_error("Container file does not exist: " + containerFile);
         }
 
-        // Read the container file
         std::ifstream inFile(containerFile, std::ios::binary);
         if (!inFile) throw std::runtime_error("Failed to open container file: " + containerFile);
 
-        // Seek to start byte
         inFile.seekg(startByte);
         if (!inFile) throw std::runtime_error("Failed to seek to start byte.");
 
-        // Read until end marker
-        std::string marker = kEndOfMessageMarker;
-        std::string extracted;
-        char ch;
-        std::string window;
+        // Read everything from startByte to EOF
+        std::string encryptedData((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
 
-        while (inFile.get(ch)) {
-            extracted.push_back(ch);
-            window.push_back(ch);
-            if (window.size() > marker.size()) {
-                window.erase(window.begin());
-            }
-            if (window == marker) {
-                // Remove marker from extracted data
-                extracted.resize(extracted.size() - marker.size());
-                break;
-            }
+        // Decrypt whole segment
+        std::string decryptedData = encryptor->decrypt(encryptedData);
+
+        // Find marker in decrypted data
+        size_t markerPos = decryptedData.find(kEndOfMessageMarker);
+        if (markerPos == std::string::npos) {
+            throw std::runtime_error("End-of-message marker not found in decrypted data. Possibly wrong key or start.");
         }
 
-        // Prepare output path: "loaded-container"_package.txt
+        std::string message = decryptedData.substr(0, markerPos);
+
         fs::path inputPath(containerFile);
         std::string stem = inputPath.stem().string();
         fs::path outputPath = inputPath.parent_path() / (stem + "_package.txt");
 
-        // Save extracted data
         std::ofstream outFile(outputPath, std::ios::binary);
-        outFile.write(extracted.data(), extracted.size());
+        outFile.write(message.data(), message.size());
     }
 }

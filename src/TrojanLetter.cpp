@@ -69,6 +69,10 @@ namespace tl {
             return;
         }
 
+        if (argHandler.hasOption("verbose")) {
+            argHandler.printCollectedOptions();
+        }
+
         if (argHandler.hasOption("decrypt")) {
             const auto containerFile = argHandler.getOption("decrypt");
             const auto key = argHandler.getOption("key");
@@ -80,7 +84,9 @@ namespace tl {
             if (!std::filesystem::exists(containerFile))
                 throw std::runtime_error("Container file does not exist: " + containerFile);
 
-            Injector::extract(containerFile, key, startByte);
+            const auto encryptor = Encryption::Encryptor::createEncryptor(key, Encryption::EncryptorType::Xor);
+
+            Injector::extract(containerFile, encryptor, startByte);
             std::cout << "Decryption completed successfully." << std::endl;
             return;
         }
@@ -96,7 +102,9 @@ namespace tl {
                 throw std::runtime_error(
                     "Container file, key, start byte, mode, and message data are required for encryption.");
 
-            Injector::inject(containerFile, key, startByte, data, mode);
+            const auto encryptor = Encryption::Encryptor::createEncryptor(key, Encryption::EncryptorType::Xor);
+
+            Injector::inject(containerFile, data, encryptor, startByte, mode);
             std::cout << "Encryption completed successfully." << std::endl;
             return;
         }

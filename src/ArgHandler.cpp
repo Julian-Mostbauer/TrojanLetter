@@ -38,6 +38,8 @@ namespace tl {
             } else if (arg == "-t" || arg == "--text") {
                 if (i + 1 >= argc) throw std::runtime_error("Missing value for --text");
                 handler.options["text"] = argv[++i];
+            } else if (arg == "--verbose") {
+                handler.options["verbose"] = "1";
             } else {
                 throw std::runtime_error("Unknown argument: " + arg);
             }
@@ -57,6 +59,7 @@ namespace tl {
     }
 
     void ArgHandler::printCollectedOptions() const {
+        cout << "================================================================\n";
         cout << "Collected Options:\n";
         for (const auto &[fst, snd]: options) {
             cout << "  " << fst << ": " << snd << "\n";
@@ -75,10 +78,11 @@ namespace tl {
         cout << "  -e, --encrypt <container>\tEncrypt the specified container file\n";
         cout << "  -d, --decrypt <container>\tDecrypt the specified container file\n";
         cout << "  -k, --key <key>\tSpecify encryption key\t required for en&de\n";
-        cout << "  -s, --start <byte>\tStart byte in container file for data\t required for en&de\n";
-        cout << "  -m, --mode <insert|override>\tInsert or override data in container file\t required for en\n";
-        cout << "  -i, --input <file>\tSpecify file to insert into container\t required for en\n";
-        cout << "  -t, --text <text>\tSpecify plain text to insert into container\t required for en\n";
+        cout << "  -s, --start <byte>\tStart byte in container file for data\t required for encr&decr\n";
+        cout << "  -m, --mode <insert|override>\tInsert or override data in container file\t required for encr\n";
+        cout << "  -i, --input <file>\tSpecify file to insert into container\t required for encr\n";
+        cout << "  -t, --text <text>\tSpecify plain text to insert into container\t required for encr\n";
+        cout << "  --verbose\t\tExtra details are logged during execution\n";
         cout << "----------------------------------------------------------------\n";
         cout << "Examples:\n";
         cout << "  ./trojanletter -e mycontainer.trojan -k mysecretkey -s 152 -m override -t \"my secret message\"\n";
