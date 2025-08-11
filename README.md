@@ -7,6 +7,12 @@ hidden inside inconspicuous container files. It supports hiding any file or plai
 file, such as an image or a video, and can also extract hidden messages from such files. It does not simply insert them
 into the container file, but also encrypts them based on the given key and choose encryption algorithm.
 
+### Why "TrojanLetter"?
+
+The name comes from the "[Trojan Horse](https://en.wikipedia.org/wiki/Trojan_Horse)". A seemingly normal everyday
+file (the wooden horse) hides a secret message or file. The tool allows you to send messages that are not
+easily detectable by casual observers, as they are hidden within container files. This can be useful for
+privacy-conscious individuals or anyone who needs to communicate sensitive information without drawing attention.
 ---
 
 ## Features
@@ -50,14 +56,18 @@ platform.
 #### Steps to Build
 
 1. Clone the repository:
-2. ```bash
+
+```bash
     git clone https://github.com/Julian-Mostbauer/TrojanLetter
-    ```
-3. Navigate to the project directory:
-4. ```bash
+   ```
+
+2. Navigate to the project directory:
+
+```bash
     cd TrojanLetter
-    ```
-5. Build the project using Cmake:
+  ```
+
+3. Build the project using Cmake:
 
 ```bash
     mkdir build && cd build
