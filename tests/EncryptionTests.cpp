@@ -7,29 +7,28 @@
 using namespace tl::Encryption;
 
 TEST_CASE("XorEncryptor encrypts then decrypts results in original data") {
-    const auto encryptor = Encryptor::createEncryptor(EncryptorType::Xor);
-
     std::string data = "Hello, World!";
     const std::string key = "key";
-    std::string encrypted = encryptor->encrypt(data, key);
-    std::string decrypted = encryptor->decrypt(encrypted, key);
+    const auto encryptor = Encryptor::createEncryptor(key, EncryptorType::Xor);
+
+    std::string encrypted = encryptor->encrypt(data);
+    std::string decrypted = encryptor->decrypt(encrypted);
     REQUIRE(decrypted == data);
     REQUIRE(encrypted != data); // Ensure encryption changes the data
 }
 
-TEST_CASE("Inplace XorEncryptor encrypts then decrypts results in original data") {
-    const auto encryptor = Encryptor::createEncryptor(EncryptorType::Xor);
+TEST_CASE("ChaCha20Poly1305 encrypts then decrypts results in original data") {
+    try {
+        std::string data = "Hello, World!";
+        const std::string key = "key";
+        const auto encryptor = Encryptor::createEncryptor(key, EncryptorType::ChaCha20Poly1305);
 
-    const std::string data = "Hello, World!";
-    const std::string key = "key";
-    const size_t size = data.size();
+        std::string encrypted = encryptor->encrypt(data);
+        std::string decrypted = encryptor->decrypt(encrypted);
 
-    encryptor->encrypt(data, key);
-    std::string encryptedData = data; // Copy original data to encryptedData
-
-    encryptor->encrypt(encryptedData.data(), size, key);
-    REQUIRE(encryptedData != data); // Ensure encryption changes the data
-
-    encryptor->decrypt(encryptedData.data(), size, key);
-    REQUIRE(encryptedData == data);
+        REQUIRE(decrypted == data);
+        REQUIRE(encrypted != data);
+    } catch (const std::exception &e) {
+        FAIL("Exception thrown: " << e.what());
+    }
 }

@@ -17,9 +17,6 @@ namespace tl::Encryption {
 
         [[nodiscard]] std::string decrypt(const std::string &data) const override;
 
-        void encrypt(char *data, size_t size) const override;
-
-        void decrypt(char *data, size_t size) const override;
     };
 }
 #endif //TROJANLETTER_XORENCRYPTOR_H

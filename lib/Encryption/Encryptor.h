@@ -11,6 +11,7 @@
 namespace tl::Encryption {
     enum class EncryptorType {
         Xor,
+        ChaCha20Poly1305
     };
 
     class Encryptor {
@@ -26,11 +27,6 @@ namespace tl::Encryption {
         [[nodiscard]] virtual std::string encrypt(const std::string &data) const = 0;
 
         [[nodiscard]] virtual std::string decrypt(const std::string &data) const = 0;
-
-
-        virtual void encrypt(char *data, size_t size) const = 0;
-
-        virtual void decrypt(char *data, size_t size) const = 0;
 
         static std::unique_ptr<Encryptor> createEncryptor(const std::string &key, const EncryptorType &type);
     };

@@ -16,14 +16,4 @@ namespace tl::Encryption {
     std::string XorEncryptor::decrypt(const std::string &data) const {
         return encrypt(data); // XOR decryption is the same as encryption
     }
-
-    void XorEncryptor::encrypt(char *data, const size_t size) const {
-        for (size_t i = 0; i < size; ++i) {
-            data[i] ^= key[i % key.size()];
-        }
-    }
-
-    void XorEncryptor::decrypt(char *data, const size_t size) const {
-        encrypt(data, size); // XOR decryption is the same as encryption
-    }
 }

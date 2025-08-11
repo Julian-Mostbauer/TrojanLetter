@@ -7,12 +7,15 @@
 #include <memory>
 #include <stdexcept>
 #include "../../lib/Encryption/XorEncryptor.h"
+#include "../../lib/Encryption/ChaCha20Poly1305Encryptor.h"
 
 namespace tl::Encryption {
     std::unique_ptr<Encryptor> Encryptor::createEncryptor(const std::string &key, const EncryptorType &type) {
         switch (type) {
             case EncryptorType::Xor:
                 return std::make_unique<XorEncryptor>(key);
+            case EncryptorType::ChaCha20Poly1305:
+                return std::make_unique<ChaCha20Poly1305Encryptor>(key);
             default:
                 throw std::runtime_error("Unknown encryptor type");
         }

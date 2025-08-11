@@ -3,27 +3,34 @@ project(TrojanLetter)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(TrojanLetter src/main.cpp
+add_executable(TrojanLetter
+        src/main.cpp
         src/ArgHandler.cpp
-        lib/ArgHandler.h
         src/TrojanLetter.cpp
-        lib/TrojanLetter.h
         src/Encryption/Encryptor.cpp
-        lib/Encryption/Encryptor.h
         src/Encryption/XorEncryptor.cpp
-        lib/Encryption/XorEncryptor.h
-        lib/Injector.h
         src/Injector.cpp
+        src/Encryption/ChaCha20Poly1305Encryptor.cpp
 )
 
-add_executable(TrojanLetterEncryptionTests tests/EncryptionTests.cpp
-        src/Encryption/Encryptor.cpp
-        lib/Encryption/Encryptor.h
-        src/Encryption/XorEncryptor.cpp
-        lib/Encryption/XorEncryptor.h
-        /home/julian/GlobalCppLibs/catch2/catch.hpp
+target_include_directories(TrojanLetter PRIVATE /home/julian/GlobalCppLibs/cryptopp890)
+target_link_libraries(TrojanLetter PRIVATE /home/julian/GlobalCppLibs/cryptopp890/libcryptopp.a)
+
+add_executable(TrojanLetterEncryptionTests
+        tests/EncryptionTests.cpp
         /home/julian/GlobalCppLibs/catch2/catch.cpp
+
+        src/Encryption/Encryptor.cpp
+        src/Encryption/XorEncryptor.cpp
+        src/Encryption/ChaCha20Poly1305Encryptor.cpp
 )
+
+target_include_directories(TrojanLetterEncryptionTests PRIVATE /home/julian/GlobalCppLibs/cryptopp890)
+target_link_libraries(TrojanLetterEncryptionTests PRIVATE /home/julian/GlobalCppLibs/cryptopp890/libcryptopp.a)
+
+target_compile_options(TrojanLetterEncryptionTests PRIVATE -fsanitize=address,undefined -g -O1)
+target_link_libraries(TrojanLetterEncryptionTests PRIVATE -fsanitize=address,undefined)
+
 
 target_compile_options(TrojanLetter PRIVATE
         -Wall
