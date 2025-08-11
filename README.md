@@ -48,9 +48,9 @@ platform.
 
 #### Requirements/Dependencies
 
-- CMake (version 3.10 or higher)
+- CMake (version 4.0 or higher)
 - A C++ compiler (e.g., g++, clang++)
-- C++17 support
+- C++20 support
 - [Crypto++](https://www.cryptopp.com/) library compiled to a static library (libcryptopp.a)
 
 #### Steps to Build
@@ -101,6 +101,8 @@ Encryption:
 -k, --key <key>                Encryption key (no default value)
 -s, --start <byte>             Start byte in container file (no default value)
 -m, --mode <insert|override>   How to insert data into container (default: insert)
+  insert: Insert data after the specified byte position
+  override: Override data after the specified start byte position
 -i, --input <file>             File to insert (no default value)
 -t, --text <text>              Plain text to insert (no default value)
 -a, --algorithm <name>         Encryption algorithm (default: ChaCha20Poly1305)
@@ -128,11 +130,15 @@ plain text. You can also specify the encryption algorithm with the `-a` option.
 For example, to hide a file named `msg.txt` inside an image file `image.png`, starting at byte 152000, using the
 `Xor` encryption algorithm, you would run:
 
-```
-
+```bash
 ./trojanletter -e image.png -k "mykey" -s 152000 -m insert -i ./msg.txt -a Xor
-
 ```
+
+This will produce a new file named `<container_file>_loaded` which keeps the original file name and extension but adds
+`_loaded` to the end of the name. For example, if the container file was `image.png`, the output file will be
+`image_loaded.png`. You can open it to check if it still looks like the original file. The hidden message will be
+encrypted and inserted at the specified byte position in the container file. The original file will allways remain
+unchanged.
 
 ### Extracting a message
 
@@ -142,11 +148,16 @@ can also specify the encryption algorithm with the `-a` option.
 For example, to extract a message from `image_loaded.png`, starting at byte 152000, using the `Xor` encryption
 algorithm, you would run:
 
-```
-
+```bash
 ./trojanletter -d image_loaded.png -k "mykey" -s 152000 -a Xor
-
 ```
+
+Extracting a message will produce a file named `<container_file>_package.txt` in the current directory, which contains
+the extracted message. The file will be a txt no matter what the original file was, but the data will remain the same.
+This means that if you hid a binary file, the extracted file will still contain the binary data, but it will besaved
+as a `.txt` file. You can rename it to the original file extension if needed. If you want to send your recipient an
+image for example, you need to inform them what file extension the data is supposed to have. For example by sending a
+different container file beforehand with the instructions on how to extract the message in plain text.
 
 ---
 
