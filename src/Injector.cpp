@@ -61,7 +61,7 @@ namespace tl {
         payload.insert(payload.end(), lenBuf, lenBuf + sizeof(lenBuf));
         payload.insert(payload.end(), encryptedData.begin(), encryptedData.end());
 
-        if (injectionMode == InjectionMode::Overwrite) {
+        if (injectionMode == InjectionMode::Override) {
             if (size_t needed = startByte + payload.size(); needed > buffer.size()) buffer.resize(needed);
             std::ranges::copy(payload, buffer.begin() + startByte);
         } else {

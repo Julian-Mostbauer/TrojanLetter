@@ -11,7 +11,7 @@
 
 namespace tl {
     enum class InjectionMode {
-        Overwrite,
+        Override,
         Insert,
     };
 

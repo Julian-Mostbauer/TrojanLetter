@@ -55,8 +55,8 @@ namespace tl {
                 handler.options["text"] = argv[++i];
             } else if (arg == "--verbose") {
                 handler.options["verbose"] = "1";
-            } else if (arg == "-a" || arg == "--algorythm") {
-                handler.options["algorythm"] = argv[++i];
+            } else if (arg == "-a" || arg == "--algorithm") {
+                handler.options["algorithm"] = argv[++i];
             } else if (arg == "--listalg") {
                 handler.options["listalg"] = "1";
             } else {

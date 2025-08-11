@@ -38,8 +38,8 @@ namespace tl {
 
         if (mode == "insert")
             return InjectionMode::Insert;
-        if (mode == "overwrite")
-            return InjectionMode::Overwrite;
+        if (mode == "override")
+            return InjectionMode::Override;
 
         throw std::runtime_error("Invalid stuffing mode: " + mode);
     }
