@@ -60,7 +60,7 @@ namespace tl {
 
     void TrojanLetter::runWithArgs(const ArgHandler &argHandler) {
         if (argHandler.hasOption("help")) {
-            ArgHandler::printHelp();
+            ArgHandler::printHelp(std::cout);
             return;
         }
 
@@ -70,21 +70,23 @@ namespace tl {
         }
 
         if (argHandler.hasOption("verbose")) {
-            argHandler.printCollectedOptions();
+            argHandler.printCollectedOptions(std::cout);
+        }
+        if (argHandler.hasOption("list-algorithms")) {
+            Encryption::printAvailableAlgorithms(std::cout);
+            return;
         }
 
         if (argHandler.hasOption("decrypt")) {
             const auto containerFile = argHandler.getOption("decrypt");
             const auto key = argHandler.getOption("key");
             const auto startByte = getStartByte(argHandler);
+            const auto algo = Encryption::encryptorTypeFromStr(argHandler.getOption("algorithm"));
 
             if (containerFile.empty() || key.empty())
-                throw std::runtime_error("Container file, key, and start byte are required for decryption.");
+                throw std::runtime_error("Container file or key is empty.");
 
-            if (!std::filesystem::exists(containerFile))
-                throw std::runtime_error("Container file does not exist: " + containerFile);
-
-            const auto encryptor = Encryption::Encryptor::createEncryptor(key, Encryption::EncryptorType::Xor);
+            const auto encryptor = Encryption::Encryptor::createEncryptor(key, algo);
 
             Injector::extract(containerFile, encryptor, startByte);
             std::cout << "Decryption completed successfully." << std::endl;
@@ -97,19 +99,21 @@ namespace tl {
             const auto startByte = getStartByte(argHandler);
             const auto mode = getInjectionMode(argHandler);
             const auto data = getMessageData(argHandler);
+            const auto algo = Encryption::encryptorTypeFromStr(argHandler.getOption("algorithm"));
 
             if (containerFile.empty() || key.empty())
                 throw std::runtime_error(
-                    "Container file, key, start byte, mode, and message data are required for encryption.");
+                    "Container file or key is missing.");
 
-            const auto encryptor = Encryption::Encryptor::createEncryptor(key, Encryption::EncryptorType::Xor);
+            const auto encryptor = Encryption::Encryptor::createEncryptor(key, algo);
 
             Injector::inject(containerFile, data, encryptor, startByte, mode);
+
             std::cout << "Encryption completed successfully." << std::endl;
             return;
         }
 
         std::cerr << "Unrecognized command line options." << std::endl;
-        ArgHandler::printHelp();
+        ArgHandler::printHelp(std::cout);
     }
 }

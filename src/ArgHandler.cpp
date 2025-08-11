@@ -10,6 +10,21 @@
 using std::cout;
 
 namespace tl {
+    inline std::string ArgHandler::getDefaultValue(const std::string &option) noexcept {
+        if (option == "help") return "";
+        if (option == "version") return "";
+        if (option == "encrypt") return "";
+        if (option == "decrypt") return "";
+        if (option == "key") return "";
+        if (option == "start") return "";
+        if (option == "input") return "";
+        if (option == "text") return "";
+        if (option == "verbose") return "0";
+        if (option == "mode") return "insert";
+        if (option == "algorithm") return "ChaCha20Poly1305";
+        return "";
+    }
+
     ArgHandler ArgHandler::fromArgs(const int argc, char *argv[]) {
         ArgHandler handler;
         for (int i = 1; i < argc; ++i) {
@@ -40,6 +55,10 @@ namespace tl {
                 handler.options["text"] = argv[++i];
             } else if (arg == "--verbose") {
                 handler.options["verbose"] = "1";
+            } else if (arg == "-a" || arg == "--algorythm") {
+                handler.options["algorythm"] = argv[++i];
+            } else if (arg == "--listalg") {
+                handler.options["listalg"] = "1";
             } else {
                 throw std::runtime_error("Unknown argument: " + arg);
             }
@@ -47,47 +66,61 @@ namespace tl {
         return handler;
     }
 
-    bool ArgHandler::hasOption(const std::string &option) const {
+    bool ArgHandler::hasOption(const std::string &option) const noexcept {
         return options.contains(option);
     }
 
-    std::string ArgHandler::getOption(const std::string &option) const {
+    std::string ArgHandler::getOption(const std::string &option) const noexcept {
         if (const auto it = options.find(option); it != options.end()) {
             return it->second;
         }
-        return "";
+        return getDefaultValue(option);
     }
 
-    void ArgHandler::printCollectedOptions() const {
-        cout << "================================================================\n";
-        cout << "Collected Options:\n";
+    void ArgHandler::printCollectedOptions(std::ostream &out) const noexcept {
+        out << "================================================================\n";
+        out << "Collected Options:\n";
         for (const auto &[fst, snd]: options) {
-            cout << "  " << fst << ": " << snd << "\n";
+            out << "  " << fst << ": " << snd << "\n";
         }
-        cout << "================================================================" << std::endl;
+        out << "================================================================" << std::endl;
     }
 
-    void ArgHandler::printHelp() {
-        cout << "================================================================\n";
-        cout << "TrojanLetter - Container File Encryption/Decryption Tool\n";
-        cout << "----------------------------------------------------------------\n";
-        cout << "Usage: ./trojanletter [options]\n";
-        cout << "Options:\n";
-        cout << "  -h, --help\t\tShow this help message and exit\n";
-        cout << "  -v, --version\t\tShow version information and exit\n";
-        cout << "  -e, --encrypt <container>\tEncrypt the specified container file\n";
-        cout << "  -d, --decrypt <container>\tDecrypt the specified container file\n";
-        cout << "  -k, --key <key>\tSpecify encryption key\t required for en&de\n";
-        cout << "  -s, --start <byte>\tStart byte in container file for data\t required for encr&decr\n";
-        cout << "  -m, --mode <insert|override>\tInsert or override data in container file\t required for encr\n";
-        cout << "  -i, --input <file>\tSpecify file to insert into container\t required for encr\n";
-        cout << "  -t, --text <text>\tSpecify plain text to insert into container\t required for encr\n";
-        cout << "  --verbose\t\tExtra details are logged during execution\n";
-        cout << "----------------------------------------------------------------\n";
-        cout << "Examples:\n";
-        cout << "  ./trojanletter -e mycontainer.trojan -k mysecretkey -s 152 -m override -t \"my secret message\"\n";
-        cout << "  ./trojanletter -e mycontainer.trojan -k mysecretkey -s 152 -m insert -f ./my_message.txt\n";
-        cout << "  ./trojanletter -d mycontainer.trojan -k mysecretkey -s 152\n";
-        cout << "================================================================" << std::endl;
+    void ArgHandler::printHelp(std::ostream &out) noexcept {
+        out << "================================================================\n";
+        out << "TrojanLetter - Container File Encryption/Decryption Tool\n";
+        out << "----------------------------------------------------------------\n";
+        out << "Usage: ./trojanletter [options]\n\n";
+
+        out << "General:\n"
+                << "  -h, --help                     Show this help message and exit\n"
+                << "  -v, --version                  Show version information and exit\n"
+                << "  --list-algorithms              List available encryption algorithms and exit\n"
+                << "  --verbose                      Enable verbose logging\n"
+                << "\n";
+
+        out << "Encryption:\n"
+                << "  -e, --encrypt <container>      Encrypt the container file (no default value)\n"
+                << "  -k, --key <key>                Encryption key (no default value)\n"
+                << "  -s, --start <byte>             Start byte in container file (no default value)\n"
+                << "  -m, --mode <insert|override>   How to insert data into container (default: insert)\n"
+                << "  -i, --input <file>             File to insert (no default value)\n"
+                << "  -t, --text <text>              Plain text to insert (no default value)\n"
+                << "  -a, --algorithm <name>         Encryption algorithm (default: ChaCha20Poly1305)\n"
+                << "\n";
+
+        out << "Decryption:\n"
+                << "  -d, --decrypt <container>      Decrypt the container file (no default value)\n"
+                << "  -k, --key <key>                Encryption key (no default value)\n"
+                << "  -s, --start <byte>             Start byte in container file (no default value)\n"
+                << "  -a, --algorithm <name>         Encryption algorithm (default: ChaCha20Poly1305)\n"
+                << "\n";
+
+        out << "----------------------------------------------------------------\n";
+        out << "Examples:\n"
+                << "  ./trojanletter -e container.trojan -k mykey -s 152 -m override -t \"secret\"\n"
+                << "  ./trojanletter -e container.trojan -k mykey -s 152 -m insert -f ./msg.txt\n"
+                << "  ./trojanletter -d container.trojan -k mykey -s 152\n";
+        out << "================================================================" << std::endl;
     }
 }
