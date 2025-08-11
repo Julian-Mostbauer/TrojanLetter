@@ -22,7 +22,7 @@ namespace tl::Encryption {
     }
 
     void printAvailableAlgorithms(std::ostream &out) noexcept {
-        out << "Available encryption algorithms:\n"
+        out << "(Casing is important!) Available encryption algorithms:\n"
                 << "  - Xor: Basic xor encryption. Not recommended.\n"
                 << "  - ChaCha20Poly1305: Generally secure. Details can be found https://en.wikipedia.org/wiki/ChaCha20-Poly1305\n";
     }

@@ -64,7 +64,7 @@ namespace tl::Encryption {
             throw std::runtime_error("input too short for ChaCha20-Poly1305 format");
         }
 
-        const byte *ptr = reinterpret_cast<const byte *>(data.data());
+        auto ptr = reinterpret_cast<const byte *>(data.data());
         SecByteBlock salt(ptr, SALT_LEN);
         ptr += SALT_LEN;
         SecByteBlock nonce(ptr, NONCE_LEN);
