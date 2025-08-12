@@ -125,7 +125,7 @@ namespace tl {
 
         fs::path inputPath(containerFile);
         std::string stem = inputPath.stem().string();
-        fs::path outputPath = inputPath.parent_path() / (stem + "_package.txt");
+        fs::path outputPath = inputPath.parent_path() / (stem + "_package");
 
         std::ofstream outFile(outputPath, std::ios::binary | std::ios::trunc);
         if (!outFile) throw std::runtime_error("Failed to open output file for writing: " + outputPath.string());

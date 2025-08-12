@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.28)
 project(TrojanLetter)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -37,6 +37,8 @@ target_compile_options(TrojanLetter PRIVATE
         -Wextra
         -Wpedantic
         -Werror
+        -Wno-unused-parameter
+        -O3
 )
 
 target_include_directories(TrojanLetter PRIVATE

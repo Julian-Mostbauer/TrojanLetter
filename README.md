@@ -2,13 +2,14 @@
 
 ## TEMPORARY WARNING!
 
-This project is currently in an early stage of development. 
-The code is not yet fully tested and may contain bugs. 
-The command line interface is not yet finalized and may change in the future. 
+This project is currently in an early stage of development.
+The code is not yet fully tested and may contain bugs.
+The command line interface is not yet finalized and may change in the future.
 
-Currently, it is not recommended to use this tool, but you are welcome to try it out and provide feedback.
+Currently, it is not recommended to use this tool for serious use, but you are welcome to try it out and provide
+feedback.
 
-## Introduction
+## About
 
 TrojanLetter is a command-line tool designed to aid in sending secret messages
 hidden inside inconspicuous container files. It supports hiding any file or plain text inside a (preferably) bigger
@@ -17,7 +18,8 @@ into the container file, but also encrypts them based on the given key and choos
 
 ### Why "TrojanLetter"?
 
-The name comes from the "[Trojan Horse](https://en.wikipedia.org/wiki/Trojan_Horse)". A seemingly normal everyday
+The name comes from the legend of the "[Trojan Horse](https://en.wikipedia.org/wiki/Trojan_Horse)". A seemingly normal
+everyday
 file (the wooden horse) hides a secret message or file. The tool allows you to send messages that are not
 easily detectable by casual observers, as they are hidden within container files. This can be useful for
 privacy-conscious individuals or anyone who needs to communicate sensitive information without drawing attention.
@@ -57,7 +59,7 @@ platform.
 
 #### Requirements/Dependencies
 
-- CMake (version 4.0 or higher)
+- CMake (version 3.28 or higher)
 - A C++ compiler (e.g., g++, clang++)
 - C++20 support
 - [Crypto++](https://www.cryptopp.com/) library compiled to a static library (libcryptopp.a)
@@ -81,7 +83,7 @@ platform.
 ```bash
     mkdir build && cd build
     cmake ..
-    make
+    make TrojanLetter
   ```
 
 ---
@@ -162,11 +164,13 @@ algorithm, you would run:
 ```
 
 Extracting a message will produce a file named `<container_file>_package.txt` in the current directory, which contains
-the extracted message. The file will be a txt no matter what the original file was, but the data will remain the same.
-This means that if you hid a binary file, the extracted file will still contain the binary data, but it will besaved
-as a `.txt` file. You can rename it to the original file extension if needed. If you want to send your recipient an
-image for example, you need to inform them what file extension the data is supposed to have. For example by sending a
-different container file beforehand with the instructions on how to extract the message in plain text.
+the extracted message. The file will no automatically have the same file type as before, but the data will remain the
+same. This means that if you hide a binary file, the extracted file will still contain the binary data, but it will be
+saved without any extension. You can rename it to the original file extension if needed.
+
+For Example: If you want to send your recipient an png, you need to inform them what file extension the
+data is supposed to have. For example by sending a different container file beforehand with the instructions on how to
+extract the message in plain text.
 
 ---
 
