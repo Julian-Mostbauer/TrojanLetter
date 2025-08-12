@@ -1,5 +1,13 @@
 # TrojanLetter
 
+## TEMPORARY WARNING!
+
+This project is currently in an early stage of development. 
+The code is not yet fully tested and may contain bugs. 
+The command line interface is not yet finalized and may change in the future. 
+
+Currently, it is not recommended to use this tool, but you are welcome to try it out and provide feedback.
+
 ## Introduction
 
 TrojanLetter is a command-line tool designed to aid in sending secret messages
