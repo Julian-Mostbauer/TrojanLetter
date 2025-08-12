@@ -13,6 +13,7 @@ The name comes from the "[Trojan Horse](https://en.wikipedia.org/wiki/Trojan_Hor
 file (the wooden horse) hides a secret message or file. The tool allows you to send messages that are not
 easily detectable by casual observers, as they are hidden within container files. This can be useful for
 privacy-conscious individuals or anyone who needs to communicate sensitive information without drawing attention.
+
 ---
 
 ## Features
