@@ -1,13 +1,13 @@
 # TrojanLetter
 
-## TEMPORARY WARNING!
+## WARNING!
 
 This project is currently in an early stage of development.
-The code is not yet fully tested and may contain bugs.
+The code is not yet fully tested and may contain bugs. It's not save to assume using this program will result in actually secure encryption!
+
 The command line interface is not yet finalized and may change in the future.
 
-Currently, it is not recommended to use this tool for serious use, but you are welcome to try it out and provide
-feedback.
+Currently, it is not recommended to use this tool for serious use, but you are welcome to try it out and provide feedback.
 
 ## About
 
@@ -176,9 +176,6 @@ extract the message in plain text.
 
 ## Security Considerations
 
-- Always use a strong and unique key for encryption. Making up a long catchphrase is a good idea.
-- Do not share details of the encryption through insecure channels. This includes the key, starting byte, and
-  encryption algorithm.
 - When hiding in files like images, it's better to place the hidden message deep inside the file. This way, the image
   looks more natural and is less likely to be detected by casual inspection. Avoid the first few thousand bytes, as they
   often contain metadata which can easily corrupt the container file if modified. This would make the container file
